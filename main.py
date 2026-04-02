@@ -1,5 +1,7 @@
 import csv
 import random
+import pandas as pd
+
 def get_name():
     while True:
         # strip function - removes spaces from the beginning and end
@@ -131,37 +133,21 @@ def get_age_group(age):
         return "older"
 
 def calculate_survival_chance(gender, passenger_class, age):
-    # survival % = (number of similar passengers who survived) / (total similar passengers) * 100
-    # similar means : same gender , same class, same age group.
-    total = 0
-    survived = 0
+    titanic_df = pd.read_csv("titanic3.csv", encoding="utf-8-sig")
+    titanic_df = titanic_df.dropna(subset=["sex", "pclass", "survived", "age"])
+    titanic_df["sex"] = titanic_df["sex"].str.strip().str.lower()
+    titanic_df["age_group"] = titanic_df["age"].apply(get_age_group)
     user_group = get_age_group(age)
-    with open("titanic3.csv", "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            try:
-                if (row["sex"] == "" or
-                    row["pclass"] == "" or
-                    row["survived"] == "" or
-                    row["age"] == ""):
-                    continue
-                row_gender = row["sex"].strip().lower()
-                row_class = int(row["pclass"])
-                row_survived = int(row["survived"])
-                row_age = float(row["age"])
-                row_group = get_age_group(row_age)
-                if (row_gender == gender and
-                    row_class == passenger_class and
-                    row_group == user_group):
-                    total += 1
-                    if row_survived == 1:
-                        survived += 1
-
-            except (ValueError, KeyError):
-                continue
-    if total == 0:
+    matched = titanic_df.loc[
+        (titanic_df["sex"] == gender) &
+        (titanic_df["pclass"] == passenger_class) &
+        (titanic_df["age_group"] == user_group)
+    ]
+    if len(matched) == 0:
         return 0.0
-    return (survived / total) * 100
+    survived_count = len(matched.loc[matched["survived"] == 1])
+    survival_percent = (survived_count / len(matched)) * 100
+    return survival_percent
 
 def main():
     initialize_used_tickets_file()
